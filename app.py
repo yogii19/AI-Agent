@@ -44,13 +44,7 @@ def login():
             login_user(user)
             return redirect("/")
     return render_template("login.html")
-    <h2>Login</h2>
-    <form method='POST'>
-        <input name='username' placeholder='Username' required><br><br>
-        <input name='password' type='password' placeholder='Password' required><br><br>
-        <button type='submit'>Login</button>
-    </form>
-    """
+    
 
 # 🚪 Logout
 @app.route("/logout")
