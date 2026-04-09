@@ -1,12 +1,12 @@
 from flask import Flask, render_template, request, redirect, session
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required
 import os
 from openai import OpenAI
 
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ✅ OpenAI setup (IMPORTANT)
+# ✅ OpenAI setup
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # 🔐 Login setup
@@ -25,7 +25,7 @@ class User(UserMixin):
 def load_user(user_id):
     return User(user_id)
 
-# 🔐 Login route
+# 🔐 Login Route
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -48,7 +48,7 @@ def logout():
     logout_user()
     return redirect("/login")
 
-# 💬 AI Chat
+# 💬 Chat Route
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def home():
@@ -58,32 +58,31 @@ def home():
     if request.method == "POST":
         user_input = request.form.get("message")
 
-        
-          try:
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are Darshanam.ai assistant"},
-            {"role": "user", "content": user_input}
-        ]
-    )
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are Darshanam.ai, a helpful assistant."},
+                    {"role": "user", "content": user_input}
+                ]
+            )
 
-    reply = response.choices[0].message.content
+            reply = response.choices[0].message.content
 
-except Exception as e:
-    print("AI ERROR:", e)
-    reply = "AI is not responding. Check API key."
-
+        except Exception as e:
+            print("AI ERROR:", e)
+            reply = "AI is not responding. Check API key."
 
         session["chats"].append({
             "user": user_input,
             "bot": reply
         })
+
         session.modified = True
 
     return render_template("index.html", chats=session["chats"])
 
-# 🔄 Reset chat
+# 🔄 Reset Chat
 @app.route("/reset")
 @login_required
 def reset():
@@ -92,4 +91,4 @@ def reset():
 
 # ▶️ Run
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
