@@ -59,20 +59,14 @@ def home():
         user_input = request.form.get("message")
 
         try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are Darshanam.ai, a helpful AI assistant."},
-                    *[
-                        {"role": "user", "content": c["user"]} if i % 2 == 0 
-                        else {"role": "assistant", "content": c["bot"]}
-                        for i, c in enumerate(session["chats"])
-                    ],
-                    {"role": "user", "content": user_input}
-                ]
-            )
+           response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": user_input}
+    ]
+)
 
-            reply = response.choices[0].message.content
+reply = response.choices[0].message.content
 
         except Exception as e:
             print("AI ERROR:", e)
