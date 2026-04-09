@@ -43,7 +43,7 @@ def login():
             user = User(username)
             login_user(user)
             return redirect("/")
-    return """
+    return render_template("login.html")
     <h2>Login</h2>
     <form method='POST'>
         <input name='username' placeholder='Username' required><br><br>
