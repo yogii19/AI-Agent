@@ -1,22 +1,20 @@
 from flask import Flask, render_template, request, redirect, session
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from pymongo import MongoClient
-import openai
 import os
-import PyPDF2
+from openai import OpenAI
 
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# 🔑 OpenAI API
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# ✅ OpenAI setup (IMPORTANT)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # 🔐 Login setup
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-# Demo users (you can store in DB later)
+# 👤 Demo user
 users = {"admin": {"password": "123"}}
 
 class User(UserMixin):
@@ -27,24 +25,21 @@ class User(UserMixin):
 def load_user(user_id):
     return User(user_id)
 
-# 🍃 MongoDB setup
-client = MongoClient(os.getenv("MONGO_URI"))
-db = client["darshanam_ai"]
-collection = db["chats"]
-
 # 🔐 Login route
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+        username = request.form.get("username")
+        password = request.form.get("password")
 
         if username in users and users[username]["password"] == password:
             user = User(username)
             login_user(user)
             return redirect("/")
+        else:
+            return render_template("login.html", error="Invalid username or password")
+
     return render_template("login.html")
-    
 
 # 🚪 Logout
 @app.route("/logout")
@@ -53,60 +48,51 @@ def logout():
     logout_user()
     return redirect("/login")
 
-# 📄 Upload PDF
-@app.route("/upload", methods=["POST"])
-@login_required
-def upload():
-    file = request.files["pdf"]
-
-    reader = PyPDF2.PdfReader(file)
-    text = ""
-
-    for page in reader.pages:
-        text += page.extract_text()
-
-    session["pdf_text"] = text
-    return redirect("/")
-
-# 💬 Main chat
+# 💬 AI Chat
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def home():
+    if "chats" not in session:
+        session["chats"] = []
+
     if request.method == "POST":
-        user_input = request.form["message"]
+        user_input = request.form.get("message")
 
-        pdf_context = session.get("pdf_text", "")
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are Darshanam.ai, a helpful AI assistant."},
+                    *[
+                        {"role": "user", "content": c["user"]} if i % 2 == 0 
+                        else {"role": "assistant", "content": c["bot"]}
+                        for i, c in enumerate(session["chats"])
+                    ],
+                    {"role": "user", "content": user_input}
+                ]
+            )
 
-        completion = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are Darshanam.ai, a smart AI assistant. Use PDF content if relevant."},
-                {"role": "user", "content": pdf_context + "\\nUser: " + user_input}
-            ]
-        )
+            reply = response.choices[0].message.content
 
-        response = completion.choices[0].message["content"]
+        except Exception as e:
+            print("AI ERROR:", e)
+            reply = "Error connecting to AI. Check API key."
 
-        # Save in DB
-        collection.insert_one({
-            "user": current_user.id,
-            "message": user_input,
-            "response": response
+        session["chats"].append({
+            "user": user_input,
+            "bot": reply
         })
+        session.modified = True
 
-    # Load chats
-    chats = list(collection.find({"user": current_user.id}))
-
-    return render_template("index.html", chats=chats)
+    return render_template("index.html", chats=session["chats"])
 
 # 🔄 Reset chat
 @app.route("/reset")
 @login_required
 def reset():
-    collection.delete_many({"user": current_user.id})
-    session.pop("pdf_text", None)
+    session.pop("chats", None)
     return redirect("/")
 
-# ▶️ Run app
+# ▶️ Run
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
