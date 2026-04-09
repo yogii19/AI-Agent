@@ -58,19 +58,22 @@ def home():
     if request.method == "POST":
         user_input = request.form.get("message")
 
-        try:
-           response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[
-        {"role": "user", "content": user_input}
-    ]
-)
+        
+          try:
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are Darshanam.ai assistant"},
+            {"role": "user", "content": user_input}
+        ]
+    )
 
-reply = response.choices[0].message.content
+    reply = response.choices[0].message.content
 
-        except Exception as e:
-            print("AI ERROR:", e)
-            reply = "Error connecting to AI. Check API key."
+except Exception as e:
+    print("AI ERROR:", e)
+    reply = "AI is not responding. Check API key."
+
 
         session["chats"].append({
             "user": user_input,
