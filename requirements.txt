@@ -1,0 +1,6 @@
+Flask
+openai
+gunicorn
+flask-login
+pymongo
+PyPDF2
